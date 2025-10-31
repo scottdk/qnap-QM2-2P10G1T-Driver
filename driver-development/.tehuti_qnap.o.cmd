@@ -1,0 +1,3 @@
+savedcmd_/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.o := ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments   -r -o /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.o @/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.mod  ; ./tools/objtool/objtool --hacks=jump_label --hacks=noinstr --hacks=skylake --ibt --orc --retpoline --rethunk --sls --static-call --uaccess --prefix=16  --link  --module /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.o
+
+/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.o: $(wildcard ./tools/objtool/objtool)
