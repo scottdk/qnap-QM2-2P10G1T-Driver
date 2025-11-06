@@ -1,6 +1,8 @@
 # QNAP QM2-2P10G1T Driver Testing Log
 
-## Current Status (Before Testing)
+# QNAP QM2-2P10G1T Driver Testing Log
+
+## Current Status (Before Testing) - ✅ CONFIRMED WORKING
 - **Date**: November 6, 2025
 - **TrueNAS Version**: SCALE 25.04.2.4
 - **Kernel**: 6.12.15-production+truenas
@@ -8,6 +10,13 @@
 - **Interface**: enp4s0 at 10.0.11.1/24
 - **Performance**: 10GbE (10000Mb/s) full duplex
 - **Status**: ✅ WORKING - Network drives accessible
+- **Persistence**: systemd service `tn40xx-loader.service` enabled and tested
+
+## Service Status Update ✅
+**Issue Found**: systemd service was pointing to old `tn40xx-driver/` path  
+**Fix Applied**: Updated service to use `driver-source/ensure_tn40xx_on_boot.sh`  
+**Result**: Service now shows `active (exited)` with `status=0/SUCCESS`  
+**Test Command**: `sudo systemctl start tn40xx-loader.service` - PASSED
 
 ## Planned Tests
 
@@ -36,8 +45,8 @@ ping -c 3 10.0.11.2
 systemctl status tn40xx-loader.service
 ```
 
-**Result**: [ ] PASS / [ ] FAIL
-**Notes**:
+**Result**: ⏳ IN PROGRESS - REBOOTING NOW (Nov 6, 20:15)
+**Notes**: System reboot initiated to test persistence
 
 
 ### Test 2: Firmware Upgrade Survival ⏳
