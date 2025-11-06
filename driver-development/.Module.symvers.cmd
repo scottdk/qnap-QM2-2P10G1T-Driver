@@ -1,1 +1,0 @@
-savedcmd_/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/Module.symvers :=  scripts/mod/modpost -M -m       -o /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/Module.symvers -T /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/modules.order -i Module.symvers -e 

@@ -1,1 +1,0 @@
-savedcmd_/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.mod := printf '%s\n'   tehuti_modified.o | awk '!x[$$0]++ { print("/mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/"$$0) }' > /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T/driver-development/tehuti_qnap.mod

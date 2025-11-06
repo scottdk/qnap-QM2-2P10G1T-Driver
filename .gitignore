@@ -1,0 +1,16 @@
+# Build artifacts
+*.o
+*.ko
+*.mod
+*.mod.c
+.*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+._RESUME_
+
+# Generated PHY header (will be regenerated if needed)
+driver-source/MV88X3310_phy.h
+
+# Archive folder with old development files
+_archive/

@@ -1,231 +1,180 @@
-# QNAP QM2-2P10G1T TrueNAS Driver
+# QNAP QM2-2P10G1T 10GbE Driver for TrueNAS SCALE
 
-A Linux driver solution for the QNAP QM2-2P10G1T 10GbE network card on TrueNAS systems. This card uses the Tehuti TN9710P chipset (PCI ID: 1fc9:4027) which is not recognized by the stock Linux kernel driver.
+This repository contains the complete driver package for the **QNAP QM2-2P10G1T** (TN9710P chipset) 10 Gigabit Ethernet card to work properly on **TrueNAS SCALE**.
 
-## 🚀 Quick Start
+## 🎯 Quick Install (Recommended Method)
 
-1. **Clone or download this repository** to your TrueNAS system
-2. **Navigate to the driver directory:**
-   ```bash
-   cd driver-development
-   ```
-3. **Run the automated installer:**
-   ```bash
-   sudo ./install_qnap_driver.sh
-   ```
-4. **Verify the installation:**
-   ```bash
-   ./check_status.sh
-   ```
+For the QNAP QM2-2P10G1T card, you **MUST** use the tn40xx driver with MV88X3310 PHY firmware support:
 
-## 📋 What This Project Provides
+```bash
+cd driver-source
+sudo ./install_mv88x3310.sh
+```
 
-- **Modified Tehuti driver** with TN9710P PCI ID support (1fc9:4027)
-- **Automated installation scripts** for easy setup and maintenance
-- **Status checking tools** to verify driver functionality
-- **Complete documentation** for troubleshooting and customization
-- **TrueNAS update recovery** procedures
+This will:
+- Generate MV88X3310 PHY header from firmware
+- Build tn40xx driver with MV88X3310 support  
+- Load the driver with proper PHY initialization
+- Configure automatic loading on boot
 
-## 🔧 Hardware Compatibility
+## ✅ Verification
 
-**Supported Hardware:**
-- QNAP QM2-2P10G1T M.2 to 10GbE adapter
-- Tehuti TN9710P chipset (PCI ID: 1fc9:4027)
+After installation, verify the driver is working:
 
-**Tested Environment:**
-- TrueNAS SCALE (Linux kernel 6.12.15-production+truenas)
-- Other Linux distributions with kernel headers
+```bash
+# Check driver is loaded
+lsmod | grep tn40xx
+
+# Check interface (should show LOWER_UP and no NO-CARRIER)
+ip link show enp4s0
+
+# Check link speed (should show 10000Mb/s)
+sudo ethtool enp4s0
+
+# Configure IP and test
+sudo ip addr add 10.0.11.1/24 dev enp4s0
+ping 10.0.11.2  # Replace with your peer IP
+```
+
+Expected output:
+- **Interface**: `<BROADCAST,MULTICAST,UP,LOWER_UP>`
+- **Speed**: `10000Mb/s` 
+- **Link detected**: `yes`
 
 ## 📁 Project Structure
 
 ```
 qnap-QM2-2P10G1T/
-├── README.md                    # This file
-├── PROJECT_STATUS.md            # Current development status
-├── driver-development/          # Main driver implementation
-│   ├── tehuti_modified.c        # Modified driver source
-│   ├── tehuti.h                 # Driver headers
-│   ├── Makefile                 # Build configuration
-│   ├── install_qnap_driver.sh   # Automated installer
-│   ├── check_status.sh          # Status verification tool
-│   ├── README.md                # Detailed technical documentation
-│   ├── LICENSE                  # GPLv2 license
-│   ├── CONTRIBUTING.md          # Contribution guidelines
-│   └── CHANGELOG.md             # Version history
-└── drivers/                     # Reference drivers and documentation
-    └── tn40xx-driver-master/    # Upstream Tehuti driver reference
+├── driver-source/           # Clean driver source (USE THIS)
+│   ├── *.c, *.h            # Source code
+│   ├── x3310fw_*.hdr       # MV88X3310 PHY firmware  
+│   ├── install_mv88x3310.sh # ⭐ Main installer script
+│   ├── ensure_tn40xx_on_boot.sh # Boot persistence
+│   ├── setup_dkms.sh       # DKMS setup (if available)
+│   └── Makefile            # Build configuration
+│
+└── _archive/               # Historical development files
+    ├── driver-development/ # Original simple driver attempts
+    ├── github-release/     # Tested releases  
+    ├── tn40xx-driver-working/ # Working build artifacts
+    └── README.md, PROJECT_STATUS.md # Old documentation
 ```
 
-## ⚡ Installation Methods
+## 🔧 Manual Build Process
 
-### Method 1: Automated Installation (Recommended)
-```bash
-cd driver-development
-sudo ./install_qnap_driver.sh
-```
-
-### Method 2: Manual Installation
-```bash
-cd driver-development
-make                              # Build the driver
-sudo insmod ./tehuti_qnap.ko     # Load the module
-sudo ip link set enp4s0 address 02:11:22:33:44:55  # Set MAC if needed
-sudo ip link set enp4s0 up       # Bring interface up
-```
-
-## 🔍 Verification
-
-After installation, verify the driver is working:
+If the install script fails, build manually:
 
 ```bash
-cd driver-development
-./check_status.sh
+cd driver-source
+
+# Generate PHY header (if needed)
+./mvidtoh.sh x3310fw_0_3_4_0_9445.hdr MV88X3310 MV88X3310_phy.h
+
+# Build with MV88X3310 support
+make clean
+make MV88X3310=YES -j1
+
+# Load driver
+sudo rmmod tn40xx tehuti 2>/dev/null || true
+sudo insmod ./tn40xx.ko
+
+# Check kernel messages
+sudo dmesg | tail -20
 ```
 
-Expected output when working correctly:
-```
-=== QNAP TN9710P Driver Status ===
-PCI Device: Found at 04:00.0
-Driver Module: tehuti_qnap loaded
-Interface: enp4s0 exists and UP
-Link Status: Link detected (depends on cable connection)
-Speed: 10000Mb/s
-```
+## 💾 Persistence Setup
 
-## 🛠️ Troubleshooting
+The installer automatically configures persistence, but you can also set it up manually:
 
-### Common Issues
-
-**1. Interface shows NO-CARRIER**
-- **Cause:** No physical connection or peer not ready
-- **Solution:** Connect 10GbE cable to another 10GbE-capable device
-
-**2. MAC address shows as 00:00:00:00:00:00**
-- **Cause:** EEPROM read failure (known issue with some TN9710P cards)
-- **Solution:** Automatically handled by installer (sets local MAC)
-
-**3. Module build fails with OOM (Out of Memory)**
-- **Cause:** Insufficient RAM during compilation
-- **Solution:** Disable parallel builds: `make -j1`
-
-**4. Driver disappears after TrueNAS update**
-- **Cause:** System updates overwrite kernel modules
-- **Solution:** Re-run installer: `sudo ./install_qnap_driver.sh`
-
-### Debug Commands
-
+### Method 1: Systemd Service (Recommended for TrueNAS)
 ```bash
-# Check if driver is loaded
-lsmod | grep tehuti
-
-# View kernel messages
-sudo dmesg | grep -i tehuti
-
-# Check interface details
-ip link show enp4s0
-sudo ethtool enp4s0
-
-# Check PCI device
-lspci -d 1fc9:4027 -v
+sudo cp /path/to/tn40xx-loader.service /etc/systemd/system/
+sudo systemctl enable tn40xx-loader.service
 ```
 
-## 🌐 Network Configuration Example
-
-After the driver is loaded, configure networking:
-
-**On TrueNAS (example):**
+### Method 2: Boot Script
 ```bash
-sudo ip addr add 10.0.10.1/24 dev enp4s0
-sudo ip link set enp4s0 up
+sudo ./ensure_tn40xx_on_boot.sh
 ```
 
-**On peer system:**
+This creates:
+- `/etc/modprobe.d/blacklist-tehuti.conf` - Prevents conflicts
+- Systemd service for automatic loading
+
+## ⚠️ Important Notes
+
+### Why MV88X3310 PHY Firmware is Required
+
+The QNAP QM2-2P10G1T uses a **TN9710P** chipset with **MV88X3310** PHY that requires specific firmware initialization:
+
+- ❌ **Simple tehuti driver**: Loads but shows `NO-CARRIER` (no link)
+- ✅ **tn40xx + MV88X3310 firmware**: Proper 10GbE link establishment
+
+### Hardware Details
+- **Card**: QNAP QM2-2P10G1T
+- **Chipset**: TN9710P (Tehuti Networks) 
+- **PCI ID**: `1fc9:4027` 
+- **PHY**: MV88X3310 (requires firmware version 0.3.4.0)
+- **Interface**: Typically appears as `enp4s0`
+
+### Supported Speeds
+- 10GbE (10000Mb/s) - Primary
+- 5GbE (5000Mb/s)  
+- 2.5GbE (2500Mb/s)
+- 1GbE (1000Mb/s)
+- 100Mbps
+
+## 🐛 Troubleshooting
+
+### No Link (NO-CARRIER)
 ```bash
-sudo ip addr add 10.0.10.2/24 dev <your-10gb-interface>
-sudo ip link set <your-10gb-interface> up
+# Check if wrong driver loaded
+lsmod | grep -E "tehuti|tn40"
+
+# If tehuti is loaded, switch to tn40xx
+sudo rmmod tehuti
+sudo ./install_mv88x3310.sh
 ```
 
-**Test connectivity:**
+### Build Failures  
 ```bash
-ping 10.0.10.2  # From TrueNAS
+# Install build dependencies
+sudo apt update
+sudo apt install build-essential linux-headers-$(uname -r)
+
+# Try single-threaded build
+make clean && make MV88X3310=YES -j1
 ```
 
-## 📈 Performance Testing
-
-Use iperf3 to test 10GbE performance:
-
-**On peer system:**
+### Driver Not Loading
 ```bash
-iperf3 -s
+# Check for conflicts
+sudo dmesg | grep -i tn40
+sudo modprobe -r tehuti tn40xx
+sudo insmod ./tn40xx.ko
 ```
 
-**On TrueNAS:**
-```bash
-iperf3 -c 10.0.10.2 -P 4 -t 10
-```
+## 📋 Development History
 
-Expected results: ~9.4+ Gbps for 10GbE links
+This driver package was developed through extensive testing on TrueNAS SCALE 25.04.2.4:
 
-## 🔄 Maintenance
+1. **Simple tehuti driver**: Initial attempt using modified Tehuti driver
+2. **tn40xx exploration**: Discovered need for PHY-specific support  
+3. **MV88X3310 firmware**: Found and integrated PHY firmware requirements
+4. **Working solution**: tn40xx + MV88X3310 firmware = 10GbE success
 
-### After TrueNAS Updates
-
-TrueNAS system updates will remove custom kernel modules. To restore:
-
-```bash
-cd /path/to/qnap-QM2-2P10G1T/driver-development
-sudo ./install_qnap_driver.sh
-```
-
-### Automatic Recovery (Future Enhancement)
-
-Consider setting up a systemd service or cron job to automatically reinstall the driver after reboots.
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [`driver-development/CONTRIBUTING.md`](driver-development/CONTRIBUTING.md) for guidelines.
-
-**Common contribution areas:**
-- Testing on different kernel versions
-- EEPROM/MAC address detection improvements
-- DKMS packaging for automatic rebuilds
-- Performance optimizations
-- Documentation improvements
+All development artifacts are preserved in `_archive/` for reference.
 
 ## 📄 License
 
-This project is licensed under the GNU General Public License v2.0 - see the [`LICENSE`](driver-development/LICENSE) file for details.
+This driver is based on the open-source tn40xx driver project. See individual source files for specific license information.
 
-**Important:** This project modifies GPL-licensed Tehuti driver code. Original copyright holders retain their rights.
+## 🆘 Support
 
-## 🔗 Related Projects
-
-- [tn40xx-driver](drivers/tn40xx-driver-master/) - Upstream Tehuti driver reference
-- [Linux Kernel Tehuti Driver](https://github.com/torvalds/linux/blob/master/drivers/net/ethernet/tehuti/tehuti.c) - Mainline kernel version
-
-## ⚠️ Disclaimer
-
-This is an unofficial driver modification. Use at your own risk. The authors are not responsible for any hardware damage or data loss.
-
-**For production environments:** Test thoroughly in a non-production environment first.
-
-## 📞 Support
-
-- **Issues:** Open an issue on GitHub
-- **Documentation:** See [`driver-development/README.md`](driver-development/README.md) for detailed technical information
-- **Status:** Check [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for current development status
-
-## 🎯 Roadmap
-
-- ✅ **Phase 1:** Basic driver functionality (COMPLETED)
-- ✅ **Phase 2:** Installation automation (COMPLETED)
-- 🔄 **Phase 3:** Connectivity testing (IN PROGRESS)
-- 📋 **Phase 4:** DKMS integration for persistence
-- 📋 **Phase 5:** Upstream kernel submission
-- 📋 **Phase 6:** Performance optimization
+1. **Check dmesg**: `sudo dmesg | grep -i tn40`
+2. **Verify hardware**: `lspci | grep 1fc9:4027`  
+3. **Interface status**: `ip link show` and `sudo ethtool <interface>`
+4. **Review this README**: All common issues are covered above
 
 ---
-
-**Last Updated:** November 1, 2025  
-**Status:** Ready for connectivity testing  
-**Compatibility:** TrueNAS SCALE, Linux kernel 6.x+
+**Success**: QNAP QM2-2P10G1T working at 10GbE on TrueNAS SCALE 25.04.2.4 ✅
