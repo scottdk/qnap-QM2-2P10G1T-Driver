@@ -1,0 +1,28 @@
+========================================
+QNAP 10GbE - Manual Fix After Reboot
+========================================
+
+Run these commands after every reboot or system update:
+
+cd /mnt/Pool1/home/dockuser/dev/qnap-QM2-2P10G1T
+
+sudo rmmod tn40xx tehuti_qnap 2>/dev/null || true
+
+sudo insmod driver-source/tn40xx.ko
+
+sleep 3
+
+sudo ip link set enp4s0 up
+
+sudo ip addr add 10.0.11.1/24 dev enp4s0
+
+ping -c 3 10.0.11.2
+
+
+Expected result:
+- Valid MAC address (24:5e:be:2a:ee:26 or similar)
+- Speed: 10000Mb/s
+- Ping to 10.0.11.2 works
+- Network drives accessible
+
+Last tested: November 6, 2025 ✅

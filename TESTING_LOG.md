@@ -45,11 +45,58 @@ ping -c 3 10.0.11.2
 systemctl status tn40xx-loader.service
 ```
 
-**Result**: ⏳ IN PROGRESS - REBOOTING NOW (Nov 6, 20:15)
-**Notes**: System reboot initiated to test persistence
+**Result**: ❌ FAILED - Critical Issue Discovered  
+**Notes**: 
+- **Reboot 1 (20:15)**: System rebooted, wrong driver loaded (tehuti instead of tn40xx)
+- **Reboot 2 (21:25)**: Attempted manual driver binding - **KERNEL PANIC / REBOOT**
+- **Reboot 3 (21:35)**: Second binding attempt - **KERNEL PANIC / REBOOT**  
+- **Reboot 4 (21:49)**: Third binding attempt - **KERNEL PANIC / REBOOT**
+- **Final State**: enp4s0 interface exists with null MAC (00:00:00:00:00:00), no driver bound
+
+**⚠️ CRITICAL FINDING**: 
+**PCI driver bind/unbind operations cause immediate kernel panic and system reboot on this hardware/kernel combination.**
+
+Commands that trigger reboot:
+```bash
+# ALL OF THESE CAUSE KERNEL PANIC:
+echo "0000:04:00.0" | sudo tee /sys/bus/pci/drivers/tn40xx/bind
+echo "0000:04:00.0" | sudo tee /sys/bus/pci/drivers/tehuti/unbind  
+echo "1fc9 4027" | sudo tee /sys/bus/pci/drivers/tn40xx/new_id
+```
+
+**Root Cause**: Built-in `tehuti` driver loads before custom `tn40xx`, preventing proper binding.
+
+**Current Blockers**:
+1. Cannot safely bind/unbind PCI drivers without kernel panic
+2. Blacklisting tehuti driver created but not yet tested
+3. Driver compilation fails due to memory constraints (process killed)
+4. Precompiled module available but binding issue prevents use
+
+**✅ SOLUTION FOUND (22:41)**:
+**Manual Loading Procedure** - Works perfectly!
+
+**Winning Formula**:
+```bash
+# Remove ALL drivers first (critical!)
+sudo rmmod tn40xx tehuti_qnap tehuti 2>/dev/null || true
+# Then load tn40xx - it auto-binds now
+sudo insmod driver-source/tn40xx.ko
+# Interface appears with valid MAC and PHY firmware
+```
+
+**Result**: 
+- ✅ Interface `enp4s0` created with valid MAC (24:5e:be:2a:ee:26)
+- ✅ Link established at 10000Mb/s full duplex
+- ✅ Connectivity to 10.0.11.2 working
+- ✅ All functionality restored
+
+**Manual Script Created**: `load_tn40xx_manual.sh`  
+**Documentation**: `MANUAL_LOAD_INSTRUCTIONS.md`
+
+**User Decision**: Use manual loading after each reboot (preferred solution)
 
 
-### Test 2: Firmware Upgrade Survival ⏳
+### Test 2: Firmware Upgrade Survival ⏸️
 **Objective**: Verify driver continues working after TrueNAS firmware upgrade
 
 **Pre-upgrade Status**:
